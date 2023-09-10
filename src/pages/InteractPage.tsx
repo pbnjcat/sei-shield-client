@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import SeiShieldLogo from '../components/images/SeiShieldLogo.png';
 import AgreementForm from '../components/AgreementForm';
 import FormStepper from '../components/FormStepper';
-
 const CustomBox = styled(Box)`
   display: flex;
   justify-content: center;
@@ -26,7 +25,6 @@ const InteractPage = () => {
     index: 0,
     count: steps.length,
   });
-  console.log("Current activeStep:", activeStep);
 
   function isLastStep() {
     return activeStep === steps.length - 1;

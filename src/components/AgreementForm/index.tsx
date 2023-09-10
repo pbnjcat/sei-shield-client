@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
-import { SeiWalletProvider } from '@sei-js/react';
-import SeiConnectWallet from '../SeiConnectWallet';
+import React, { useState } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import {
+  SeiWalletProvider,
+  useCosmWasmClient,
+  useSigningCosmWasmClient,
+  useWallet,
+} from "@sei-js/react";
+import SeiConnectWallet from "../SeiConnectWallet";
 import {
   Box,
   Radio,
@@ -20,7 +25,10 @@ import {
   FormHelperText,
   Spinner,
   useToast,
-} from '@chakra-ui/react';
+} from "@chakra-ui/react";
+
+const CONTRACT_ADDRESS =
+  "sei1tlyjecp78kwg4az7k57e9lr6vk40t70cj7hrd5dur5687f0plzpsmnwez6";
 
 type FormData = {
   depositAmount: number;
@@ -43,22 +51,62 @@ const AgreementForm: React.FC<AgreementFormProps> = ({
   isLastStep,
 }) => {
   const { handleSubmit, register } = useForm<FormData>();
-  const [userType, setUserType] = useState<string>('Buyer');
+  const [userType, setUserType] = useState<string>("Buyer");
   const [userAgreement, setUserAgreement] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [receivedItem, setReceivedItem] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const { accounts } = useWallet();
+  // For querying cosmwasm smart contracts
+  const { cosmWasmClient: queryClient } = useCosmWasmClient();
+
+  // For executing messages on cosmwasm smart contracts
+  const { signingCosmWasmClient: signingClient } = useSigningCosmWasmClient();
 
   const [formData, setFormData] = useState<FormData>({
     depositAmount: 0,
-    userType: 'Buyer',
+    userType: "Buyer",
     userAgreement: false,
     receivedItem: false,
   });
+  const handleDeposit = async () => {
+    try {
+      const senderAddress = accounts[0].address;
+
+      // Build message content
+      const msg = { DepositBuyer: {amount:1} };
+
+      // Define gas price and limit
+      const fee = {
+        amount: [{ amount: "0.1", denom: "usei" }],
+        gas: "200000",
+      };
+
+      // Call smart contract execute msg
+      await signingClient?.execute(senderAddress, CONTRACT_ADDRESS, msg, fee);
+
+      const response = await queryClient?.queryContractSmart(CONTRACT_ADDRESS, {
+        msg,
+      });
+
+      console.log("Response: ", response.msg);
+
+      setError("");
+      return response;
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+        console.error(error)
+      } else {
+        setError("unknown error");
+      }
+    }
+  };
 
   const toast = useToast();
 
   const onSubmit: SubmitHandler<FormData> = async (values) => {
-    console.log('Submitting', values);
+    console.log("Submitting", values);
     setIsSubmitting(true);
     setFormData(values);
     try {
@@ -68,19 +116,19 @@ const AgreementForm: React.FC<AgreementFormProps> = ({
         }, 3000);
       });
       toast({
-        title: 'Form Submitted',
-        description: 'Your form has been successfully submitted!',
-        status: 'success',
+        title: "Form Submitted",
+        description: "Your form has been successfully submitted!",
+        status: "success",
         duration: 3000,
         isClosable: true,
       });
       handleNext();
     } catch (error) {
-      console.error('Submission error:', error);
+      console.error("Submission error:", error);
       toast({
-        title: 'Error',
-        description: 'There was an error submitting the form.',
-        status: 'error',
+        title: "Error",
+        description: "There was an error submitting the form.",
+        status: "error",
         duration: 3000,
         isClosable: true,
       });
@@ -94,23 +142,15 @@ const AgreementForm: React.FC<AgreementFormProps> = ({
   };
 
   return (
-    <Flex direction='column' align='center'>
-      <FormLabel marginTop='10'>{userType} Page</FormLabel>
+    <Flex direction="column" align="center">
+      <FormLabel marginTop="10">{userType} Page</FormLabel>
       <Box>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <Box height='140' marginTop='5'>
+          <Box height="140" marginTop="5">
             <FormControl>
               {activeStep === 0 && (
-                <Flex width='900px' direction='column' align='center'>
-                  <SeiWalletProvider
-                    chainConfiguration={{
-                      chainId: 'atlantic-2',
-                      restUrl: 'https://rest.atlantic-2.seinetwork.io',
-                      rpcUrl: 'https://rpc.atlantic-2.seinetwork.io',
-                    }}
-                    wallets={['compass', 'fin']}>
-                    <SeiConnectWallet />
-                  </SeiWalletProvider>
+                <Flex width="900px" direction="column" align="center">
+                  <SeiConnectWallet />
                 </Flex>
               )}
               {activeStep === 1 && (
@@ -120,23 +160,24 @@ const AgreementForm: React.FC<AgreementFormProps> = ({
                     setFormData({ ...formData, userType: value });
                   }}
                   value={userType}
-                  justifyContent='center'>
-                  <FormLabel style={{ textAlign: 'center' }}>
+                  justifyContent="center"
+                >
+                  <FormLabel style={{ textAlign: "center" }}>
                     I am a...
                   </FormLabel>
-                  <Stack direction='row' align='center' justify='center'>
-                    <Radio value='Buyer' {...register('userType')}>
+                  <Stack direction="row" align="center" justify="center">
+                    <Radio value="Buyer" {...register("userType")}>
                       Buyer
                     </Radio>
-                    <Radio value='Seller' {...register('userType')}>
+                    <Radio value="Seller" {...register("userType")}>
                       Seller
                     </Radio>
                   </Stack>
                 </RadioGroup>
               )}
               {activeStep === 2 && (
-                <Flex align='center' direction='column'>
-                  <FormLabel fontWeight='bold' mb='2'>
+                <Flex align="center" direction="column">
+                  <FormLabel fontWeight="bold" mb="2">
                     Deposit Amount
                   </FormLabel>
                   <FormHelperText>
@@ -148,14 +189,20 @@ const AgreementForm: React.FC<AgreementFormProps> = ({
                       min={0}
                       onChange={(valueString) =>
                         handleDepositAmountChange(parseFloat(valueString))
-                      }>
-                      <NumberInputField {...register('depositAmount')} />
+                      }
+                    >
+                      <NumberInputField {...register("depositAmount")} />
                       <NumberInputStepper>
                         <NumberIncrementStepper />
                         <NumberDecrementStepper />
                       </NumberInputStepper>
                     </NumberInput>
-                    <Button type='button' colorScheme='blue' marginInline='1'>
+                    <Button
+                      type="button"
+                      colorScheme="blue"
+                      marginInline="1"
+                      onClick={handleDeposit}
+                    >
                       Deposit
                     </Button>
                   </Flex>
@@ -164,25 +211,29 @@ const AgreementForm: React.FC<AgreementFormProps> = ({
               {/* Render depending on buyer/seller */}
               {activeStep === 3 && (
                 <FormControl>
-                  <FormLabel style={{ textAlign: 'center' }}>
+                  <FormLabel style={{ textAlign: "center" }}>
                     Confirm Transfer
                   </FormLabel>
-                  {userType === 'Buyer' ? (
+                  {userType === "Buyer" ? (
                     <RadioGroup
                       onChange={(value) => {
-                        const isReceived = value === 'received';
+                        const isReceived = value === "received";
                         setReceivedItem(isReceived);
                         setFormData({
                           ...formData,
                           receivedItem: isReceived,
                         });
                       }}
-                      value={receivedItem ? 'received' : 'notReceived'}>
-                      <Stack direction='row'>
-                        <Radio value='received' {...register('receivedItem')}>
+                      value={receivedItem ? "received" : "notReceived"}
+                    >
+                      <Stack direction="row">
+                        <Radio value="received" {...register("receivedItem")}>
                           I received the correct item
                         </Radio>
-                        <Radio value='notReceived' {...register('receivedItem')}>
+                        <Radio
+                          value="notReceived"
+                          {...register("receivedItem")}
+                        >
                           I did not receive the correct item
                         </Radio>
                       </Stack>
@@ -190,71 +241,79 @@ const AgreementForm: React.FC<AgreementFormProps> = ({
                   ) : (
                     <Checkbox
                       isChecked={userAgreement}
-                      {...register('userAgreement')}
+                      {...register("userAgreement")}
                       onChange={(e) => {
                         setUserAgreement(e.target.checked);
                         setFormData({
                           ...formData,
                           userAgreement: e.target.checked,
                         });
-                      }}>
+                      }}
+                    >
                       I confirm that I have given the correct item
                     </Checkbox>
                   )}
                 </FormControl>
               )}
               {activeStep === 4 && (
-                <Flex align='center' direction='column'>
-                  <FormLabel fontWeight='bold' mb='2'>
+                <Flex align="center" direction="column">
+                  <FormLabel fontWeight="bold" mb="2">
                     Review Form
                   </FormLabel>
                   <Box>
                     <p>Deposit Amount: {formData.depositAmount}</p>
                     <p>User Type: {formData.userType}</p>
-                    {formData.userType === 'Buyer' ? (
+                    {formData.userType === "Buyer" ? (
                       <p>
-                        Received Item:{' '}
-                        {formData.receivedItem ? 'Received' : 'Not Received'}
+                        Received Item:{" "}
+                        {formData.receivedItem ? "Received" : "Not Received"}
                       </p>
-                    ) : formData.userType === 'Seller' ? (
+                    ) : formData.userType === "Seller" ? (
                       <p>
-                        User Agreement:{' '}
-                        {formData.userAgreement ? 'Agreed' : 'Not Agreed'}
+                        User Agreement:{" "}
+                        {formData.userAgreement ? "Agreed" : "Not Agreed"}
                       </p>
                     ) : null}
                   </Box>
                 </Flex>
               )}
+              {activeStep === 5 && (
+                <Flex align="center" direction="column">
+                  <Box></Box>
+                </Flex>
+              )}
             </FormControl>
           </Box>
-          <Flex justifyContent='center' gap='3' alignItems='center'>
+          <Flex justifyContent="center" gap="3" alignItems="center">
             {activeStep > 0 ? (
               <Button
                 mt={3}
-                colorScheme='teal'
+                colorScheme="teal"
                 onClick={handleBack}
-                type='button'>
+                type="button"
+              >
                 Back
               </Button>
             ) : null}
             <Button
               mt={3}
-              colorScheme='teal'
+              colorScheme="teal"
               onClick={() => {
                 if (isLastStep()) {
-                  handleSubmit(onSubmit)();
+                  handleSubmit(onSubmit)(); // Submit the form
                 } else {
-                  handleNext();
+                  handleNext(); // Advance to the next step
                 }
               }}
-              type='button'
-              isDisabled={isSubmitting}>
+              type="button"
+              isDisabled={isSubmitting}
+            >
               {isSubmitting ? (
-                <Spinner size='sm' color='white.500' />
+                <Spinner size="sm" color="white.500" />
               ) : isLastStep() ? (
-                'Submit'
+                "Submit"
               ) : (
-                'Next'
+                "Next"
               )}
             </Button>
           </Flex>
