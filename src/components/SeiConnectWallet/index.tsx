@@ -6,11 +6,6 @@ import {
   useQueryClient,
 } from '@sei-js/react';
 
-import styled from 'styled-components';
-
-const CustomBox = styled(Box)`
-
-`;
 export type BalanceResponseType = {
   amount: string;
   denom: string;
@@ -29,7 +24,7 @@ function SeiConnectWallet() {
   };
   
   const { connectedWallet, accounts, offlineSigner } = useWallet();
-  const { openModal } = useSelectWallet();
+  const { openModal, closeModal } = useSelectWallet();
 
   // useEffect(() => {
   //   const fetchBalances = async () => {
@@ -46,7 +41,7 @@ function SeiConnectWallet() {
   // }, [offlineSigner]);
 
   return (
-    <CustomBox>
+    <Box>
       {!connectedWallet ? (
         <Button onClick={openModal} mt={4} colorScheme='teal' type='button'>
           Connect Wallet
@@ -57,7 +52,7 @@ function SeiConnectWallet() {
           {/* <p>Balance:{walletBalances}</p> */}
         </>
       )}
-    </CustomBox>
+    </Box>
   );
 }
 

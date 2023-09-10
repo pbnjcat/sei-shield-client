@@ -1,5 +1,5 @@
 import SearchBar from '../components/Searchbar';
-import SellerPage from './SellerPage'
+import SellerPage from './InteractPage'
 import { Box, Flex, Image } from '@chakra-ui/react';
 import styled from 'styled-components';
 import SeiConnectWallet from '../components/SeiConnectWallet';

@@ -1,14 +1,39 @@
 import { ChakraProvider } from '@chakra-ui/react';
-import { theme } from './theme';
-import Home from './pages/Home';
-import SellerPage from './pages/SellerPage';
+// import Home from './pages/Home';
+import { extendTheme } from '@chakra-ui/react';
+import styled from "styled-components";
+import InteractPage from './pages/InteractPage';
+
+export const Wrapper = styled.div`
+    display: flex;
+`;
+
+const theme = extendTheme({
+  components: {
+    Step: {
+      baseStyle: {
+        backgroundColor: 'teal.200',
+        color: 'white',
+      },
+    },
+    StepTitle: {
+      baseStyle: {
+        fontSize: '16px',
+        color: 'black',
+      },
+    },
+  },
+});
+
 
 function App() {
+
   return (
     <>
       <ChakraProvider theme={theme}>
-        {/* <Home /> */}
-        <SellerPage />
+        <Wrapper>
+          <InteractPage/>
+        </Wrapper>
       </ChakraProvider>
     </>
   );
